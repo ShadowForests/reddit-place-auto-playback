@@ -231,7 +231,7 @@ if (window.top !== window.self) {
             return stepDelayControl;
         }
 
-        function initPlayControl() {
+        function initPlayButton() {
             let playControl = document.createElement("div");
 
             playControl.style = `
@@ -242,7 +242,7 @@ if (window.top !== window.self) {
                  align-items: center;
                  justify-content: center;
                  margin: auto;
-                 width: 20%;
+                 width: 10%;
                  height: 40px;
                  top: calc(var(--sait) + 48px);
                  text-shadow: black 1px 0 10px;
@@ -270,6 +270,41 @@ if (window.top !== window.self) {
             });
 
             return playControl;
+        }
+
+        function initStepButton() {
+            let stepControl = document.createElement("div");
+
+            stepControl.style = `
+                 left: calc(var(--sail) + 16px);
+                 right: calc(var(--sair) + 16px);
+                 display: flex;
+                 flex-flow: row nowrap;
+                 align-items: center;
+                 justify-content: center;
+                 margin: auto;
+                 width: 10%;
+                 height: 40px;
+                 top: calc(var(--sait) + 48px);
+                 text-shadow: black 1px 0 10px;
+                 text-align: center;
+            `;
+
+            // Play button
+            let stepButton = document.createElement("button");
+            stepButton.style = `
+                width: 55px;
+                height: 20px;
+            `
+            stepButton.innerHTML = "Step"
+
+            stepControl.appendChild(stepButton);
+
+            stepButton.addEventListener("click", function(evt) {
+                stepTime();
+            });
+
+            return stepControl;
         }
 
         function updateTimeDisplay(time) {
@@ -328,8 +363,11 @@ if (window.top !== window.self) {
             let stepDelayControl = initStepDelayControl();
             playbackUI.appendChild(stepDelayControl);
 
-            let playControl = initPlayControl();
-            playbackUI.appendChild(playControl);
+            let playButton = initPlayButton();
+            playbackUI.appendChild(playButton);
+
+            let stepButton = initStepButton();
+            playbackUI.appendChild(stepButton);
 
             initScrubberControl();
 
@@ -344,19 +382,23 @@ if (window.top !== window.self) {
             placeGlobal.scrubber.onRangeInput({currentTarget: {value: time + placeGlobal.minTime}});
         }
 
+        function stepTime() {
+            let currentTime = document.querySelector("mona-lisa-embed").shadowRoot.querySelector("mona-lisa-share-container").querySelector("mona-lisa-scrubber").input.value;
+            if (currentTime !== null && !isNaN(currentTime)) {
+                const time = parseInt(currentTime) + parseInt(placeGlobal.step);
+                updateTimeDisplay(time - placeGlobal.minTime);
+                placeGlobal.scrubber.onRangeInput({currentTarget: {value: time}});
+                // console.log(`Current Time: ${currentTime}`);
+            } else {
+                console.log("failed");
+            }
+        }
+
         function updateMainAnimator() {
             clearInterval(placeGlobal.mainAnimator);
             if (placeGlobal.playing) {
                 placeGlobal.mainAnimator = setInterval(function() {
-                    let currentTime = document.querySelector("mona-lisa-embed").shadowRoot.querySelector("mona-lisa-share-container").querySelector("mona-lisa-scrubber").input.value;
-                    if (currentTime !== null && !isNaN(currentTime)) {
-                        const time = parseInt(currentTime) + parseInt(placeGlobal.step);
-                        updateTimeDisplay(time - placeGlobal.minTime);
-                        placeGlobal.scrubber.onRangeInput({currentTarget: {value: time}});
-                        // console.log(`Current Time: ${currentTime}`);
-                    } else {
-                        console.log("failed");
-                    }
+                    stepTime();
                 }, parseInt(placeGlobal.stepDelay));
             }
         }
