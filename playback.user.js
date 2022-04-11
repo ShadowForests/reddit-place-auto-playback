@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Reddit Place Auto Playback
 // @namespace    http://tampermonkey.net/
-// @version      0.1
+// @version      0.2
 // @description  Automatic playback for r/place history
 // @author       ShadowForest
 // @match        https://hot-potato.reddit.com/embed*
@@ -13,12 +13,13 @@ if (window.top !== window.self) {
         // Global variables
         var placeGlobal = {
             minTime: 0,
-            counter: 0,
+            maxTime: 0,
+            time: 0,
             step: 60000,
             stepDelay: 100,
             playing: false,
             playbackUI: null,
-            svgMask: null,
+            timeInput: null,
             scrubber: null,
             layout: null,
             mainAnimator: null
@@ -26,6 +27,7 @@ if (window.top !== window.self) {
 
         const waitForPreview = setInterval(() => {
             const camera = document.querySelector("mona-lisa-embed").shadowRoot.querySelector("mona-lisa-camera");
+            camera.querySelector("mona-lisa-pixel-preview").style.display = "none";
             placeGlobal.layout = document.querySelector("mona-lisa-embed").shadowRoot;
             const canvas = camera.querySelector("mona-lisa-canvas");
             const preview = camera.querySelector("mona-lisa-pixel-preview");
@@ -34,6 +36,7 @@ if (window.top !== window.self) {
                 placeGlobal.scrubber.input.step = "1";
                 placeGlobal.scrubber.shadowRoot.querySelectorAll("div")[2].style.width = "100px";
                 placeGlobal.minTime = parseInt(placeGlobal.scrubber.input.min);
+                placeGlobal.maxTime = parseInt(placeGlobal.scrubber.input.max);
                 clearInterval(waitForPreview);
                 loadRegions()
                 setTimeout(() => {
@@ -52,6 +55,66 @@ if (window.top !== window.self) {
             referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
         }
 
+        function initTimeControl() {
+            let timeControl = document.createElement("div");
+
+            timeControl.style = `
+                 left: calc(var(--sail) + 16px);
+                 right: calc(var(--sair) + 16px);
+                 display: flex;
+                 flex-flow: row nowrap;
+                 align-items: center;
+                 justify-content: center;
+                 margin: auto;
+                 width: 25%;
+                 height: 40px;
+                 top: calc(var(--sait) + 48px);
+                 text-shadow: black 1px 0 10px;
+                 text-align: center;
+            `;
+
+            // Text
+            let timeText = document.createElement("div");
+            timeText.style = `
+                width: 40px;
+            `
+            timeText.innerText = "Time";
+            timeControl.appendChild(timeText);
+
+            let lineSeparator = document.createElement("br");
+            timeControl.appendChild(lineSeparator);
+
+            // Step input value
+            let timeInput = document.createElement("input");
+            timeInput.style = `
+                width: 90px;
+            `
+            timeInput.setAttribute("type", "number");
+            timeInput.setAttribute("id", "stepInput");
+            timeInput.setAttribute("min", "0");
+            timeInput.setAttribute("max", placeGlobal.maxTime - placeGlobal.minTime);
+            timeInput.setAttribute("step", "1");
+            timeInput.value = document.querySelector("mona-lisa-embed").shadowRoot.querySelector("mona-lisa-share-container").querySelector("mona-lisa-scrubber").input.value - placeGlobal.minTime;
+            placeGlobal.time = timeInput.value;
+            placeGlobal.timeInput = timeInput;
+
+            timeControl.appendChild(timeInput);
+
+            var rangeValue = {current: undefined, mostRecent: undefined};
+
+            timeInput.addEventListener("input", function(evt) {
+                rangeValue.current = evt.target.value;
+                if (rangeValue.current !== rangeValue.mostRecent) {
+                    timeInput.value = rangeValue.current;
+                    placeGlobal.time = rangeValue.current;
+                    jumpToTime();
+                }
+                rangeValue.mostRecent = rangeValue.current;
+            });
+
+            return timeControl;
+        }
+
         function initStepControl() {
             let stepControl = document.createElement("div");
 
@@ -63,7 +126,7 @@ if (window.top !== window.self) {
                  align-items: center;
                  justify-content: center;
                  margin: auto;
-                 width: 40%;
+                 width: 25%;
                  height: 40px;
                  top: calc(var(--sait) + 48px);
                  text-shadow: black 1px 0 10px;
@@ -121,7 +184,7 @@ if (window.top !== window.self) {
                  align-items: center;
                  justify-content: center;
                  margin: auto;
-                 width: 40%;
+                 width: 25%;
                  height: 40px;
                  top: calc(var(--sait) + 48px);
                  text-shadow: black 1px 0 10px;
@@ -133,7 +196,7 @@ if (window.top !== window.self) {
             stepDelayText.style = `
                 width: 100px;
             `
-            stepDelayText.innerText = "Step Delay";
+            stepDelayText.innerText = "Delay";
             stepDelayControl.appendChild(stepDelayText);
 
             let lineSeparator = document.createElement("br");
@@ -142,7 +205,7 @@ if (window.top !== window.self) {
             // Step input value
             let stepDelayInput = document.createElement("input");
             stepDelayInput.style = `
-                width: 90px;
+                width: 60px;
             `
             stepDelayInput.setAttribute("type", "number");
             stepDelayInput.setAttribute("id", "stepDelayInput");
@@ -209,6 +272,31 @@ if (window.top !== window.self) {
             return playControl;
         }
 
+        function updateTimeDisplay(time) {
+            //let text = placeGlobal.scrubber.shadowRoot.querySelectorAll("div")[2].innerText.split("\n")[0];
+            let hour = (Math.floor(time / 60000 / 60)).toString();
+            let minute = (Math.floor(time / 60000 % 60)).toString();
+            let text = (hour.length == 1 ? "0" : "") + hour + ":" + (minute.length == 1 ? "0" : "") + minute;
+            placeGlobal.scrubber.shadowRoot.querySelectorAll("div")[2].style.textAlign = "center";
+            placeGlobal.scrubber.shadowRoot.querySelectorAll("div")[2].style.fontSize = "70%";
+            placeGlobal.scrubber.shadowRoot.querySelectorAll("div")[2].style.lineHeight = "100%";
+            placeGlobal.scrubber.shadowRoot.querySelectorAll("div")[2].innerText = text + "\n" + time.toString();
+            placeGlobal.timeInput.value = time;
+        }
+
+        function initScrubberControl() {
+            document.querySelector("mona-lisa-embed").shadowRoot.querySelector("mona-lisa-share-container").querySelector("mona-lisa-scrubber").input.addEventListener("input", function(evt) {
+                let currentTime = document.querySelector("mona-lisa-embed").shadowRoot.querySelector("mona-lisa-share-container").querySelector("mona-lisa-scrubber").input.value;
+                if (currentTime !== null && !isNaN(currentTime)) {
+                    const time = parseInt(currentTime);
+                    updateTimeDisplay(time - placeGlobal.minTime);
+                    // console.log(`Current Time: ${currentTime}`);
+                } else {
+                    console.log("failed");
+                }
+            });
+        }
+
         // Playback UI initialization
         function initPlaybackUI() {
             let playbackUI = document.createElement("div");
@@ -223,13 +311,16 @@ if (window.top !== window.self) {
                      align-items: center;
                      justify-content: center;
                      margin: auto;
-                     width: 40%;
+                     width: 50%;
                      height: 40px;
                      top: calc(var(--sait) + 48px);
                      text-shadow: black 1px 0 10px;
                      text-align: center;
                      background-color: rgba(0, 0, 0, 0.5);
                 `;
+
+            let timeControl = initTimeControl()
+            playbackUI.appendChild(timeControl);
 
             let stepControl = initStepControl();
             playbackUI.appendChild(stepControl);
@@ -240,26 +331,29 @@ if (window.top !== window.self) {
             let playControl = initPlayControl();
             playbackUI.appendChild(playControl);
 
+            initScrubberControl();
+
             let topControls = document.querySelector("mona-lisa-embed").shadowRoot.querySelector(".layout .top-controls");
             insertAfter(playbackUI, topControls);
             placeGlobal.playbackUI = playbackUI;
+        }
+
+        function jumpToTime() {
+            const time = parseInt(placeGlobal.time);
+            updateTimeDisplay(time);
+            placeGlobal.scrubber.onRangeInput({currentTarget: {value: time + placeGlobal.minTime}});
         }
 
         function updateMainAnimator() {
             clearInterval(placeGlobal.mainAnimator);
             if (placeGlobal.playing) {
                 placeGlobal.mainAnimator = setInterval(function() {
-                    let currentValue = document.querySelector("mona-lisa-embed").shadowRoot.querySelector("mona-lisa-share-container").querySelector("mona-lisa-scrubber").input.value;
-                    if (currentValue !== null && !isNaN(currentValue)) {
-                        const time = parseInt(currentValue) + parseInt(placeGlobal.step);
-                        let text = placeGlobal.scrubber.shadowRoot.querySelectorAll("div")[2].innerText.split("\n")[0];
-                        placeGlobal.scrubber.shadowRoot.querySelectorAll("div")[2].style.textAlign = "center";
-                        placeGlobal.scrubber.shadowRoot.querySelectorAll("div")[2].style.fontSize = "70%";
-                        placeGlobal.scrubber.shadowRoot.querySelectorAll("div")[2].style.lineHeight = "100%";
-                        placeGlobal.scrubber.shadowRoot.querySelectorAll("div")[2].innerText = text + "\n" + (time - placeGlobal.minTime).toString();
+                    let currentTime = document.querySelector("mona-lisa-embed").shadowRoot.querySelector("mona-lisa-share-container").querySelector("mona-lisa-scrubber").input.value;
+                    if (currentTime !== null && !isNaN(currentTime)) {
+                        const time = parseInt(currentTime) + parseInt(placeGlobal.step);
+                        updateTimeDisplay(time - placeGlobal.minTime);
                         placeGlobal.scrubber.onRangeInput({currentTarget: {value: time}});
-                        // console.log(`ran ${placeGlobal.counter}: ${currentValue}`);
-                        placeGlobal.counter += 1;
+                        // console.log(`Current Time: ${currentTime}`);
                     } else {
                         console.log("failed");
                     }
@@ -274,13 +368,9 @@ if (window.top !== window.self) {
             }
 
             if (placeGlobal.mainAnimator === null) {
-                let currentValue = document.querySelector("mona-lisa-embed").shadowRoot.querySelector("mona-lisa-share-container").querySelector("mona-lisa-scrubber").input.value;
-                const time = parseInt(currentValue);
-                let text = placeGlobal.scrubber.shadowRoot.querySelectorAll("div")[2].innerText.split("\n")[0];
-                placeGlobal.scrubber.shadowRoot.querySelectorAll("div")[2].style.textAlign = "center";
-                placeGlobal.scrubber.shadowRoot.querySelectorAll("div")[2].style.fontSize = "70%";
-                placeGlobal.scrubber.shadowRoot.querySelectorAll("div")[2].style.lineHeight = "100%";
-                placeGlobal.scrubber.shadowRoot.querySelectorAll("div")[2].innerText = text + "\n" + (time - placeGlobal.minTime).toString();
+                let currentTime = document.querySelector("mona-lisa-embed").shadowRoot.querySelector("mona-lisa-share-container").querySelector("mona-lisa-scrubber").input.value;
+                const time = parseInt(currentTime);
+                updateTimeDisplay(time - placeGlobal.minTime);
             }
         }
     }, false);
