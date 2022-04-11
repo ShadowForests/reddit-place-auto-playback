@@ -76,7 +76,7 @@ if (window.top !== window.self) {
             // Text
             let timeText = document.createElement("div");
             timeText.style = `
-                width: 40px;
+                width: 50px;
             `
             timeText.innerText = "Time";
             timeControl.appendChild(timeText);
@@ -87,7 +87,7 @@ if (window.top !== window.self) {
             // Step input value
             let timeInput = document.createElement("input");
             timeInput.style = `
-                width: 90px;
+                width: 80px;
             `
             timeInput.setAttribute("type", "number");
             timeInput.setAttribute("id", "stepInput");
@@ -136,7 +136,7 @@ if (window.top !== window.self) {
             // Text
             let stepText = document.createElement("div");
             stepText.style = `
-                width: 40px;
+                width: 50px;
             `
             stepText.innerText = "Step";
             stepControl.appendChild(stepText);
@@ -147,7 +147,7 @@ if (window.top !== window.self) {
             // Step input value
             let stepInput = document.createElement("input");
             stepInput.style = `
-                width: 90px;
+                width: 80px;
             `
             stepInput.setAttribute("type", "number");
             stepInput.setAttribute("id", "stepInput");
@@ -194,7 +194,7 @@ if (window.top !== window.self) {
             // Text
             let stepDelayText = document.createElement("div");
             stepDelayText.style = `
-                width: 100px;
+                width: 50px;
             `
             stepDelayText.innerText = "Delay";
             stepDelayControl.appendChild(stepDelayText);
@@ -205,7 +205,7 @@ if (window.top !== window.self) {
             // Step input value
             let stepDelayInput = document.createElement("input");
             stepDelayInput.style = `
-                width: 60px;
+                width: 80px;
             `
             stepDelayInput.setAttribute("type", "number");
             stepDelayInput.setAttribute("id", "stepDelayInput");
